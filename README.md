@@ -12,7 +12,7 @@ Terraform configuration for managing HashiCorp Vault secrets in the production k
 - Terraform >= 1.0 installed
 - Kubernetes cluster (k3s) with Vault and MinIO deployed in `vault` namespace
 - `kubectl` context configured for the production cluster
-- Vault deployed with Shamir + K8s Secret automated unsealing (managed by Phase 2 bootstrap)
+- Vault deployed with Bank-Vaults operator (automated unsealing managed by Phase 2 bootstrap)
 
 ## Setup & Usage
 
