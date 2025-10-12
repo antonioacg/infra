@@ -1,5 +1,5 @@
-# Vault Infrastructure Deployment
-# Handles Vault server installation and configuration
+# Vault Infrastructure Deployment with Bank-Vaults Operator
+# Handles Vault server installation and configuration via Bank-Vaults operator
 
 resource "kubernetes_namespace" "vault" {
   metadata {
@@ -7,138 +7,168 @@ resource "kubernetes_namespace" "vault" {
   }
 }
 
-resource "helm_release" "vault" {
-  name       = "vault"
-  repository = "https://helm.releases.hashicorp.com"
-  chart      = "vault"
-  namespace  = kubernetes_namespace.vault.metadata[0].name
-  version    = "0.30.1"  # Avoid v0.30.0 which has templating issues
+resource "kubernetes_namespace" "vault_operator" {
+  metadata {
+    name = "vault-operator"
+  }
+}
+
+# Bank-Vaults Operator Installation
+resource "helm_release" "vault_operator" {
+  name       = "vault-operator"
+  repository = "oci://ghcr.io/bank-vaults/helm-charts"
+  chart      = "vault-operator"
+  namespace  = kubernetes_namespace.vault_operator.metadata[0].name
+  version    = "1.22.2"  # Latest stable version
 
   create_namespace = false
 
-  values = [yamlencode({
-    server = {
-      # High availability configuration
-      ha = {
-        enabled  = var.vault_ha_enabled
-        replicas = var.vault_replicas
+  set {
+    name  = "image.tag"
+    value = "v1.22.2"
+  }
+}
+
+# Vault CR (Custom Resource) managed by Bank-Vaults operator
+resource "kubernetes_manifest" "vault" {
+  manifest = {
+    apiVersion = "vault.banzaicloud.com/v1alpha1"
+    kind       = "Vault"
+    metadata = {
+      name      = "vault"
+      namespace = kubernetes_namespace.vault.metadata[0].name
+    }
+    spec = {
+      size  = var.vault_replicas
+      image = "hashicorp/vault:1.15.2"
+
+      # Kubernetes Secrets-based unsealing (protected by Phase 1 etcd encryption)
+      unsealConfig = {
+        kubernetes = {
+          secretNamespace = kubernetes_namespace.vault.metadata[0].name
+          secretName      = "vault-unseal-keys"
+        }
+        options = {
+          preFlightChecks = true
+          storeRootToken  = true  # Store for bootstrap, revoke after
+          secretShares    = 5
+          secretThreshold = 3
+        }
       }
 
-      # Data storage configuration
-      dataStorage = {
-        enabled      = true
-        size         = var.vault_storage_size
-        storageClass = "local-path"
-      }
+      # Vault server configuration
+      config = {
+        api_addr     = "http://vault.${kubernetes_namespace.vault.metadata[0].name}.svc.cluster.local:8200"
+        cluster_addr = "http://vault.${kubernetes_namespace.vault.metadata[0].name}.svc.cluster.local:8201"
 
-      # Auto-initialization and unsealing
-      extraInitContainers = [{
-        name  = "vault-init"
-        image = "vault:1.15.2"
-        command = ["/bin/sh"]
-        args = ["-c", file("${path.module}/scripts/vault-init.sh")]
-        env = [{
-          name = "VAULT_ADDR"
-          value = "http://localhost:8200"
+        listener = [{
+          tcp = {
+            address     = "0.0.0.0:8200"
+            tls_disable = true  # TLS termination at ingress (Phase 4)
+          }
         }]
-        volumeMounts = [{
-          name      = "vault-data"
-          mountPath = "/vault/data"
-        }]
-      }]
 
-      # Server configuration
-      standalone = {
-        enabled = !var.vault_ha_enabled
-        config = var.storage_backend == "s3" ? templatefile("${path.module}/config/vault-s3.hcl", {
-          storage_config = var.storage_config
-        }) : templatefile("${path.module}/config/vault-file.hcl", {})
+        storage = var.storage_backend == "s3" ? {
+          s3 = {
+            endpoint            = var.storage_config.endpoint
+            bucket              = var.storage_config.bucket
+            region              = "us-east-1"  # MinIO requires region
+            disable_ssl         = "true"
+            s3_force_path_style = "true"  # Required for MinIO
+            access_key          = var.storage_config.access_key
+            secret_key          = var.storage_config.secret_key
+          }
+        } : {
+          file = {
+            path = "/vault/data"
+          }
+        }
+
+        ui = true
       }
 
-      # Resources - enterprise-grade scaling for production
+      # Automatic Vault configuration after initialization
+      externalConfig = {
+        # Enable Kubernetes auth backend
+        auth = [{
+          type = "kubernetes"
+          path = "kubernetes"
+          config = {
+            kubernetes_host = "https://kubernetes.default.svc"
+          }
+          roles = [{
+            name = "external-secrets"
+            bound_service_account_names = [
+              "external-secrets"
+            ]
+            bound_service_account_namespaces = [
+              "external-secrets-system"
+            ]
+            policies = [
+              "external-secrets"
+            ]
+            ttl = "1h"
+          }]
+        }]
+
+        # Policies for External Secrets
+        policies = [{
+          name = "external-secrets"
+          rules = <<-EOT
+            path "secret/data/*" {
+              capabilities = ["read", "list"]
+            }
+            path "secret/metadata/*" {
+              capabilities = ["read", "list"]
+            }
+          EOT
+        }]
+
+        # Enable KV v2 secrets engine
+        secrets = [{
+          type        = "kv"
+          path        = "secret"
+          description = "KV v2 secrets engine"
+          options = {
+            version = 2
+          }
+        }]
+      }
+
+      # Resource allocation (tier-based via variables)
       resources = {
-        requests = {
-          memory = contains(["production", "business"], var.environment) ? "512Mi" : "256Mi"
-          cpu    = contains(["production", "business"], var.environment) ? "250m" : "100m"
-        }
-        limits = {
-          memory = contains(["production", "business"], var.environment) ? "1Gi" : "512Mi"
-          cpu    = contains(["production", "business"], var.environment) ? "1000m" : "500m"
-        }
+        vault = var.vault_resources
       }
 
       # Service configuration
-      service = {
-        enabled = true
-        type    = "ClusterIP"
-        port    = 8200
-      }
+      serviceType = "ClusterIP"
 
-      # UI configuration
-      ui = {
-        enabled         = true
-        serviceType     = "ClusterIP"
-        serviceNodePort = null
-      }
-    }
+      # Monitoring (enable in Phase 3)
+      serviceMonitorEnabled = false
 
-    # Injector configuration
-    injector = {
-      enabled = var.environment == "business"  # Enable in business phase for advanced features
-
-      resources = {
-        requests = {
-          memory = "128Mi"
-          cpu    = "50m"
+      # Volume for audit logs
+      volumeClaimTemplates = [{
+        metadata = {
+          name = "vault-audit"
         }
-        limits = {
-          memory = "256Mi"
-          cpu    = "250m"
+        spec = {
+          accessModes = ["ReadWriteOnce"]
+          resources = {
+            requests = {
+              storage = "10Gi"
+            }
+          }
         }
-      }
+      }]
     }
-  })]
-}
-
-# Service account for Vault auto-unseal
-resource "kubernetes_service_account" "vault_unseal" {
-  metadata {
-    name      = "vault-unseal"
-    namespace = kubernetes_namespace.vault.metadata[0].name
-  }
-}
-
-resource "kubernetes_cluster_role" "vault_unseal" {
-  metadata {
-    name = "vault-unseal"
   }
 
-  rule {
-    api_groups = [""]
-    resources  = ["secrets"]
-    verbs      = ["get", "list", "create", "update", "patch"]
-  }
-}
-
-resource "kubernetes_cluster_role_binding" "vault_unseal" {
-  metadata {
-    name = "vault-unseal"
-  }
-
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = kubernetes_cluster_role.vault_unseal.metadata[0].name
-  }
-
-  subject {
-    kind      = "ServiceAccount"
-    name      = kubernetes_service_account.vault_unseal.metadata[0].name
-    namespace = kubernetes_service_account.vault_unseal.metadata[0].namespace
-  }
+  depends_on = [helm_release.vault_operator]
 }
 
 # Legacy secrets management (keeping for compatibility)
+# Note: These resources will fail until Vault is initialized by Bank-Vaults
+# They should be managed via Bank-Vaults externalConfig instead
 resource "vault_mount" "kv" {
   path = var.mount_path
   type = var.mount_type
@@ -146,7 +176,7 @@ resource "vault_mount" "kv" {
     version = var.mount_version
   }
 
-  depends_on = [helm_release.vault]
+  depends_on = [kubernetes_manifest.vault]
 }
 
 resource "vault_kv_secret_v2" "secrets" {

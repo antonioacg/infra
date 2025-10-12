@@ -51,6 +51,30 @@ variable "vault_storage_size" {
   default     = "10Gi"
 }
 
+variable "vault_resources" {
+  description = "Resource allocation for Vault pods (requests and limits)"
+  type = object({
+    requests = object({
+      memory = string
+      cpu    = string
+    })
+    limits = object({
+      memory = string
+      cpu    = string
+    })
+  })
+  default = {
+    requests = {
+      memory = "256Mi"
+      cpu    = "100m"
+    }
+    limits = {
+      memory = "512Mi"
+      cpu    = "500m"
+    }
+  }
+}
+
 # Legacy variables for secrets management (keeping for compatibility)
 variable "mount_path" {
   description = "Vault KV mount path"
