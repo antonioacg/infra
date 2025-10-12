@@ -1,22 +1,78 @@
+# Vault Module Variables
+
+variable "environment" {
+  description = "Environment name (production, staging, development, homelab, business)"
+  type        = string
+  default     = "homelab"
+
+  validation {
+    condition     = contains(["production", "staging", "development", "homelab", "business"], var.environment)
+    error_message = "Environment must be: production, staging, development, homelab, or business."
+  }
+}
+
+variable "storage_backend" {
+  description = "Vault storage backend type (file or s3)"
+  type        = string
+  default     = "s3"
+
+  validation {
+    condition     = contains(["file", "s3"], var.storage_backend)
+    error_message = "Storage backend must be either 'file' or 's3'."
+  }
+}
+
+variable "storage_config" {
+  description = "Storage backend configuration"
+  type = object({
+    endpoint   = optional(string)
+    bucket     = optional(string)
+    access_key = optional(string)
+    secret_key = optional(string)
+  })
+  default = {}
+}
+
+variable "vault_ha_enabled" {
+  description = "Enable Vault high availability mode"
+  type        = bool
+  default     = false
+}
+
+variable "vault_replicas" {
+  description = "Number of Vault replicas for HA mode"
+  type        = number
+  default     = 1
+}
+
+variable "vault_storage_size" {
+  description = "Storage size for Vault data"
+  type        = string
+  default     = "10Gi"
+}
+
+# Legacy variables for secrets management (keeping for compatibility)
 variable "mount_path" {
-  description = "Mount path for KV engine"
+  description = "Vault KV mount path"
   type        = string
   default     = "secret"
 }
 
 variable "mount_type" {
-  description = "Engine type"
+  description = "Vault mount type"
   type        = string
-  default     = "kv"
+  default     = "kv-v2"
 }
 
 variable "mount_version" {
-  description = "KV engine version"
-  type        = number
-  default     = 2
+  description = "KV mount version"
+  type        = string
+  default     = "2"
 }
 
 variable "secrets" {
-  description = "Map of secret paths to key/value pairs"
+  description = "Map of Vault secret paths to key/value maps"
   type        = map(map(string))
+  default     = {}
+  sensitive   = true
 }
