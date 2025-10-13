@@ -29,6 +29,13 @@ resource "helm_release" "vault_operator" {
   }
 }
 
+# Wait for Bank-Vaults operator to install CRDs
+resource "time_sleep" "wait_for_crds" {
+  depends_on = [helm_release.vault_operator]
+
+  create_duration = "30s"  # Wait for CRDs to be registered
+}
+
 # Vault CR (Custom Resource) managed by Bank-Vaults operator
 resource "kubernetes_manifest" "vault" {
   manifest = {
@@ -163,7 +170,10 @@ resource "kubernetes_manifest" "vault" {
     }
   }
 
-  depends_on = [helm_release.vault_operator]
+  depends_on = [
+    helm_release.vault_operator,
+    time_sleep.wait_for_crds
+  ]
 }
 
 # Note: KV secrets engine and secrets are now managed via Bank-Vaults
