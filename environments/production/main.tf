@@ -84,22 +84,6 @@ module "networking" {
   enable_load_balancer = var.environment == "business"
 }
 
-# Vault secrets and authentication setup
-module "vault_auth" {
-  source = "../../modules/vault-auth"
-
-  vault_endpoint = module.vault.endpoint
-
-  # Configure authentication backends and policies
-  auth_backends = [
-    {
-      name = "kubernetes"
-      type = "kubernetes"
-      config = {
-        kubernetes_host = "https://kubernetes.default.svc"
-      }
-    }
-  ]
-
-  depends_on = [module.vault]
-}
+# Note: Vault authentication backends and policies are now configured
+# automatically via Bank-Vaults operator externalConfig in the vault module.
+# The vault_auth module is no longer needed.
