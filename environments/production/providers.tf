@@ -10,15 +10,6 @@ provider "helm" {
   }
 }
 
-provider "vault" {
-  address = "http://localhost:8200"  # Port-forward to Vault
-
-  # Use Kubernetes service account authentication
-  auth_login {
-    path = "auth/kubernetes/login"
-    parameters = {
-      role = "terraform"
-      jwt  = file("/var/run/secrets/kubernetes.io/serviceaccount/token")
-    }
-  }
-}
+# Note: Vault provider not needed for Phase 2 deployment.
+# Bank-Vaults handles all Vault configuration via externalConfig.
+# Vault provider may be added back in Phase 3 if needed for advanced configuration.

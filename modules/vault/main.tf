@@ -166,25 +166,12 @@ resource "kubernetes_manifest" "vault" {
   depends_on = [helm_release.vault_operator]
 }
 
-# Legacy secrets management (keeping for compatibility)
-# Note: These resources will fail until Vault is initialized by Bank-Vaults
-# They should be managed via Bank-Vaults externalConfig instead
-resource "vault_mount" "kv" {
-  path = var.mount_path
-  type = var.mount_type
-  options = {
-    version = var.mount_version
-  }
-
-  depends_on = [kubernetes_manifest.vault]
-}
-
-resource "vault_kv_secret_v2" "secrets" {
-  for_each = var.secrets
-
-  mount = vault_mount.kv.path
-  path  = each.key
-  data  = each.value
-
-  depends_on = [vault_mount.kv]
-}
+# Note: KV secrets engine and secrets are now managed via Bank-Vaults
+# externalConfig (see Vault CR configuration above). Legacy vault_mount
+# and vault_kv_secret_v2 resources have been removed to avoid requiring
+# the Vault provider during Phase 2c deployment.
+#
+# Secrets should be managed via:
+# 1. Bank-Vaults externalConfig for secrets engine setup (done above)
+# 2. External Secrets Operator for application secret synchronization (Phase 3+)
+# 3. Direct Vault CLI/API for manual secret management (Phase 3+)

@@ -75,28 +75,6 @@ variable "vault_resources" {
   }
 }
 
-# Legacy variables for secrets management (keeping for compatibility)
-variable "mount_path" {
-  description = "Vault KV mount path"
-  type        = string
-  default     = "secret"
-}
-
-variable "mount_type" {
-  description = "Vault mount type"
-  type        = string
-  default     = "kv-v2"
-}
-
-variable "mount_version" {
-  description = "KV mount version"
-  type        = string
-  default     = "2"
-}
-
-variable "secrets" {
-  description = "Map of Vault secret paths to key/value maps"
-  type        = map(map(string))
-  default     = {}
-  sensitive   = true
-}
+# Note: Legacy secrets management variables removed.
+# KV secrets engine is configured via Bank-Vaults externalConfig.
+# Application secrets should be managed via External Secrets Operator (Phase 3+).
