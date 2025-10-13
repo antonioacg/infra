@@ -6,19 +6,25 @@ variable "ingress_class" {
   default     = "nginx"
 }
 
-variable "environment" {
-  description = "Environment phase (homelab or business)"
+variable "resource_tier" {
+  description = "Resource tier for scaling (small, medium, large)"
   type        = string
-  default     = "homelab"
+  default     = "small"
 
   validation {
-    condition     = contains(["homelab", "business"], var.environment)
-    error_message = "Environment must be either 'homelab' or 'business'."
+    condition     = contains(["small", "medium", "large"], var.resource_tier)
+    error_message = "Resource tier must be: small, medium, or large."
   }
 }
 
+variable "node_count" {
+  description = "Number of nodes in the cluster"
+  type        = number
+  default     = 1
+}
+
 variable "enable_load_balancer" {
-  description = "Enable LoadBalancer service type (for business environments)"
+  description = "Enable LoadBalancer service type (when external load balancer is available)"
   type        = bool
   default     = false
 }

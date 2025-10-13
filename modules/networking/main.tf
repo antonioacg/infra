@@ -18,16 +18,17 @@ resource "helm_release" "nginx_ingress" {
 
   values = [yamlencode({
     controller = {
-      replicaCount = var.environment == "business" ? 2 : 1
+      # HA mode: 2 replicas for multi-node clusters
+      replicaCount = var.node_count > 1 ? 2 : 1
 
       service = {
         type = var.enable_load_balancer ? "LoadBalancer" : "ClusterIP"
 
-        # For homelab phase, use NodePort for external access
-        nodePorts = var.environment == "homelab" ? {
+        # Use NodePort for external access when not using load balancer
+        nodePorts = var.enable_load_balancer ? {} : {
           http  = 30080
           https = 30443
-        } : {}
+        }
       }
 
       resources = {
@@ -36,21 +37,21 @@ resource "helm_release" "nginx_ingress" {
           memory = "128Mi"
         }
         limits = {
-          cpu    = var.environment == "business" ? "1000m" : "500m"
-          memory = var.environment == "business" ? "512Mi" : "256Mi"
+          cpu    = var.resource_tier == "large" ? "1000m" : (var.resource_tier == "medium" ? "750m" : "500m")
+          memory = var.resource_tier == "large" ? "512Mi" : (var.resource_tier == "medium" ? "384Mi" : "256Mi")
         }
       }
 
-      # Enable metrics for monitoring in business phase
+      # Enable metrics for enterprise tiers (medium/large)
       metrics = {
-        enabled = var.environment == "business"
+        enabled = contains(["medium", "large"], var.resource_tier)
         serviceMonitor = {
-          enabled = var.environment == "business"
+          enabled = contains(["medium", "large"], var.resource_tier)
         }
       }
 
-      # High availability configuration for business phase
-      affinity = var.environment == "business" ? {
+      # High availability: spread replicas across nodes for multi-node clusters
+      affinity = var.node_count > 1 ? {
         podAntiAffinity = {
           preferredDuringSchedulingIgnoredDuringExecution = [{
             weight = 100
@@ -72,9 +73,9 @@ resource "helm_release" "nginx_ingress" {
         # Security headers
         add-headers = "ingress-nginx/custom-headers"
 
-        # Performance tuning
-        worker-processes = var.environment == "business" ? "auto" : "1"
-        max-worker-connections = var.environment == "business" ? "16384" : "1024"
+        # Performance tuning based on tier
+        worker-processes = var.resource_tier == "large" ? "auto" : "1"
+        max-worker-connections = var.resource_tier == "large" ? "16384" : (var.resource_tier == "medium" ? "8192" : "1024")
 
         # SSL configuration
         ssl-protocols = "TLSv1.2 TLSv1.3"
@@ -121,7 +122,7 @@ resource "helm_release" "cloudflared" {
       token = var.cloudflare_tunnel_token
     }
 
-    replicaCount = var.environment == "business" ? 2 : 1
+    replicaCount = var.node_count > 1 ? 2 : 1
 
     resources = {
       requests = {

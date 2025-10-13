@@ -77,11 +77,10 @@ module "external_secrets" {
 module "networking" {
   source = "../../modules/networking"
 
-  ingress_class = "nginx"
-  environment   = var.environment
-
-  # Business phase gets additional networking features
-  enable_load_balancer = var.environment == "business"
+  ingress_class        = "nginx"
+  resource_tier        = var.resource_tier
+  node_count           = var.node_count
+  enable_load_balancer = false  # Set to true when external load balancer is available
 }
 
 # Note: Vault authentication backends and policies are now configured

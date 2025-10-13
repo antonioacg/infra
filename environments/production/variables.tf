@@ -14,7 +14,7 @@ variable "environment" {
 variable "node_count" {
   description = "Number of nodes in the cluster"
   type        = number
-  default     = 1  # homelab default, override to 3+ for business
+  default     = 1  # Single node default, scale to 3+ for HA
 }
 
 variable "resource_tier" {

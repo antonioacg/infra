@@ -1,13 +1,13 @@
 # Vault Module Variables
 
 variable "environment" {
-  description = "Environment name (production, staging, development, homelab, business)"
+  description = "Environment name (production, staging, development)"
   type        = string
-  default     = "homelab"
+  default     = "production"
 
   validation {
-    condition     = contains(["production", "staging", "development", "homelab", "business"], var.environment)
-    error_message = "Environment must be: production, staging, development, homelab, or business."
+    condition     = contains(["production", "staging", "development"], var.environment)
+    error_message = "Environment must be: production, staging, or development."
   }
 }
 
