@@ -29,15 +29,16 @@ resource "helm_release" "vault_operator" {
   }
 }
 
-# Wait for Bank-Vaults operator to install CRDs
-resource "time_sleep" "wait_for_crds" {
-  depends_on = [helm_release.vault_operator]
-
-  create_duration = "30s"  # Wait for CRDs to be registered
-}
-
 # Vault CR (Custom Resource) managed by Bank-Vaults operator
+# Note: CRD availability is ensured by Phase 2c Step 2 (kubectl wait) before this is deployed
 resource "kubernetes_manifest" "vault" {
+  # Wait for Vault to be unsealed after deployment
+  wait {
+    fields = {
+      "status.sealed" = "false"
+    }
+  }
+
   manifest = {
     apiVersion = "vault.banzaicloud.com/v1alpha1"
     kind       = "Vault"
@@ -170,10 +171,9 @@ resource "kubernetes_manifest" "vault" {
     }
   }
 
-  depends_on = [
-    helm_release.vault_operator,
-    time_sleep.wait_for_crds
-  ]
+  # CRD wait handled by Phase 2c Step 2 (kubectl wait for CRD established)
+  # Operator dependency ensures namespace and operator exist before CR creation
+  depends_on = [helm_release.vault_operator]
 }
 
 # Note: KV secrets engine and secrets are now managed via Bank-Vaults
