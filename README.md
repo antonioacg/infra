@@ -1,44 +1,63 @@
 # Infra Repository
 
-Terraform configuration for managing HashiCorp Vault secrets in the production k3s cluster.
+Terraform configuration for Phase 2+ infrastructure.
+
+**After bootstrap, all infrastructure changes are managed via Flux GitOps** (see `deployments/` repo).
+
+## Purpose
+
+This repo contains Terraform for:
+- Phase 2: State migration + Flux installation (REMOTE state in MinIO)
+
+**Note**: Phase 1 Terraform (MinIO, PostgreSQL) is in `infra-management/bootstrap-state/` with LOCAL state.
+
+Post-Phase 2, Terraform is only used for state management. All infrastructure changes (Vault, ESO, ingress, apps) flow through `deployments/` via Flux.
 
 ## Structure
 
-- **envs/prod**: environment-specific Terraform (backend, providers, module invocation, variables, tfvars)
-- **modules/vault**: reusable Terraform module for mounting a KV-v2 engine and creating secrets
+```
+infra/
+├── environments/
+│   └── production/     # Phase 2+ config
+│       ├── backend.tf  # Remote state (MinIO)
+│       ├── main.tf     # Module invocations
+│       └── variables.tf
+└── modules/            # Reusable modules
+```
 
 ## Prerequisites
 
-- Terraform >= 1.0 installed
-- Kubernetes cluster (k3s) with Vault and MinIO deployed in `vault` namespace
-- `kubectl` context configured for the production cluster
-- Vault deployed with Bank-Vaults operator (automated unsealing managed by Phase 2 bootstrap)
+- Terraform >= 1.0
+- Phase 1 complete (k3s, MinIO, PostgreSQL running)
+- State migration from LOCAL to REMOTE
 
-## Setup & Usage
+## Usage
 
-1. Update `envs/prod/terraform.tfvars` with your MinIO and Vault credentials, and define `vault_secrets`.
+Terraform is invoked automatically by bootstrap scripts. Manual usage:
 
-2. Initialize Terraform:
-   ```bash
-   cd envs/prod
-   terraform init
-   ```
+```bash
+cd environments/production
+terraform init
+terraform plan
+terraform apply
+```
 
-3. Plan and apply:
-   ```bash
-   terraform plan -var-file=terraform.tfvars
-   terraform apply -var-file=terraform.tfvars
-   ```
+## State Management
 
-4. Verify secrets in Vault:
-   ```bash
-   vault kv get -mount=secret <path>
-   ```
+| Phase | Location | Backend |
+|-------|----------|---------|
+| Phase 1 | `infra-management/bootstrap-state/` | LOCAL (`/tmp/bootstrap-state`) |
+| Phase 2+ | `infra/environments/production/` | REMOTE (MinIO + PostgreSQL) |
 
-## CI/CD
+## Post-Bootstrap
 
-Automation can be added via Flux/CD or GitHub Actions to run Terraform commands on commits to `envs/prod`.
+After Phase 2 completes:
+- Terraform state is preserved in MinIO
+- All changes to Vault, ESO, ingress, apps via `deployments/` repo
+- Flux reconciles GitOps manifests automatically
 
-## License
+## Related Documentation
 
-MIT
+- [ARCHITECTURE.md](../ARCHITECTURE.md) - Platform architecture
+- [BOOTSTRAP.md](../infra-management/BOOTSTRAP.md) - Bootstrap phases
+- [deployments/](../deployments/) - GitOps manifests
