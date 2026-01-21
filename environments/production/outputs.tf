@@ -1,31 +1,19 @@
 # Production Environment Outputs
+# Infrastructure is now managed via Flux GitOps
+# Module outputs have been removed
 
-output "vault_endpoint" {
-  description = "Vault endpoint URL"
-  value       = module.vault.endpoint
-}
-
-output "vault_namespace" {
-  description = "Vault namespace"
-  value       = module.vault.namespace
-}
-
-output "external_secrets_namespace" {
-  description = "External Secrets namespace"
-  value       = module.external_secrets.namespace
-}
-
-output "ingress_controller_namespace" {
-  description = "Nginx Ingress Controller namespace"
-  value       = module.networking.ingress_namespace
-}
-
-output "environment_phase" {
-  description = "Current environment phase"
+output "environment" {
+  description = "Environment name"
   value       = var.environment
 }
 
-output "node_count" {
-  description = "Configured node count"
-  value       = var.node_count
-}
+# Note: The following outputs have been removed as infrastructure
+# is now managed via Flux GitOps:
+# - vault_endpoint, vault_namespace (from vault module)
+# - external_secrets_namespace (from external_secrets module)
+# - ingress_controller_namespace (from networking module)
+# - node_count (tier-based scaling)
+#
+# To check infrastructure status, use:
+#   flux get helmreleases -A
+#   kubectl get pods -A
