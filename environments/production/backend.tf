@@ -4,14 +4,14 @@
 
 terraform {
   backend "s3" {
-    endpoint                    = "http://localhost:9000"  # Port-forward to bootstrap MinIO
-    region                      = "us-east-1"
-    bucket                      = "terraform-state"
+    endpoint = "http://localhost:9000" # Port-forward to bootstrap MinIO
+    region   = "local"                 # MinIO accepts any string
+    bucket   = "terraform-state"
     # key will be provided via -backend-config="key=${ENVIRONMENT}/infra/terraform.tfstate"
     skip_region_validation      = true
     skip_credentials_validation = true
     skip_metadata_api_check     = true
-    skip_requesting_account_id  = true  # Required for MinIO compatibility
+    skip_requesting_account_id  = true # Required for MinIO compatibility
     force_path_style            = true
 
     # Credentials provided via:
