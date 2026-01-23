@@ -4,8 +4,10 @@
 
 terraform {
   backend "s3" {
-    endpoint = "http://localhost:9000" # Port-forward to bootstrap MinIO
-    region   = "local"                 # MinIO accepts any string
+    # REQUIRES port-forward: kubectl port-forward -n bootstrap svc/bootstrap-minio 9000:9000 &
+    # See CLAUDE.md "Day-2 Terraform Operations" for full setup
+    endpoint = "http://localhost:9000"
+    region   = "local" # MinIO accepts any string
     bucket   = "terraform-state"
     # key will be provided via -backend-config="key=${ENVIRONMENT}/infra/terraform.tfstate"
     skip_region_validation      = true

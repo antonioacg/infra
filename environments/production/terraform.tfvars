@@ -4,10 +4,10 @@
 environment = "production"
 
 # Resource tier - controls resource allocation (small, medium, large)
-resource_tier = "small"  # Change to "medium" or "large" for more resources
+resource_tier = "small" # Change to "medium" or "large" for more resources
 
 # Scaling configuration - controls HA and distributed deployments
-node_count = 1  # Increase to 3+ for multi-node HA
+node_count = 1 # Increase to 3+ for multi-node HA
 
 # Storage sizes (adjust based on available disk space)
 vault_storage_size = "10Gi"
