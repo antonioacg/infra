@@ -15,10 +15,10 @@ terraform {
 # Note: Infrastructure modules have been migrated to GitOps
 #
 # The following components are now managed in the deployments repository:
-# - Vault Operator (infrastructure/vault-operator/)
-# - Vault (infrastructure/vault/)
-# - External Secrets (infrastructure/external-secrets/)
-# - Ingress Nginx (infrastructure/ingress-nginx/)
+# - Vault Operator (clusters/production/vault-operator/)
+# - Vault (clusters/production/vault/)
+# - External Secrets (clusters/production/external-secrets/)
+# - Ingress Nginx (clusters/production/ingress-nginx/)
 #
 # This Terraform configuration now only manages the state backend.
-# See: https://github.com/antonioacg/deployments/tree/main/clusters/production/infrastructure
+# See: https://github.com/antonioacg/deployments/tree/main/clusters/production
