@@ -25,3 +25,9 @@ variable "vault_mount" {
   type        = string
   default     = "secret"
 }
+
+variable "secret_name" {
+  description = "Override the Kubernetes secret name (defaults to basename of name)"
+  type        = string
+  default     = ""
+}

@@ -3,5 +3,5 @@ output "vault_path" {
 }
 
 output "k8s_secret_name" {
-  value = basename(var.name)
+  value = var.secret_name != "" ? var.secret_name : basename(var.name)
 }

@@ -30,12 +30,16 @@ resource "vault_kv_secret_v2" "secret" {
   ))
 }
 
+locals {
+  k8s_secret_name = var.secret_name != "" ? var.secret_name : basename(var.name)
+}
+
 resource "kubernetes_manifest" "external_secret" {
   manifest = {
     apiVersion = "external-secrets.io/v1beta1"
     kind       = "ExternalSecret"
     metadata = {
-      name      = basename(var.name)
+      name      = local.k8s_secret_name
       namespace = var.namespace
     }
     spec = {
@@ -45,7 +49,7 @@ resource "kubernetes_manifest" "external_secret" {
         kind = "ClusterSecretStore"
       }
       target = {
-        name = basename(var.name)
+        name           = local.k8s_secret_name
         creationPolicy = "Owner"
       }
       dataFrom = [
