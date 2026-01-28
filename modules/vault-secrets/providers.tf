@@ -9,7 +9,8 @@ terraform {
 # Vault provider uses K8s auth via service account token
 # tf-controller mounts the SA token automatically
 provider "vault" {
-  address = var.vault_addr
+  address         = var.vault_addr
+  skip_tls_verify = true # Self-signed cert in homelab
 
   auth_login {
     path = "auth/kubernetes/login"
