@@ -1,7 +1,9 @@
-data "vault_kv_secret_v2" "bootstrap_inputs" {
-  mount = "secret"
-  name  = "bootstrap/inputs"
-}
+# Uncomment when deploying apps that need user-provided secrets (cloudflared, datadog, etc.)
+# Pass VAULT_INPUT_<key>=<value> during bootstrap to populate secret/bootstrap/inputs
+# data "vault_kv_secret_v2" "bootstrap_inputs" {
+#   mount = "secret"
+#   name  = "bootstrap/inputs"
+# }
 
 # Read tf-controller's MinIO credentials (stored by bootstrap phase 2)
 data "vault_kv_secret_v2" "tf_minio" {
