@@ -11,20 +11,9 @@ data "vault_kv_secret_v2" "tf_minio" {
   name  = "infra/minio/tf-user"
 }
 
-# tf-controller's MinIO credentials (synced to flux-system for runner pod)
-# Bootstrap creates tf-user with access only to terraform-state bucket
-module "tf_minio_credentials" {
-  source      = "../vault-secret"
-  name        = "infra/minio/tf-user"
-  namespace   = "flux-system"
-  secret_name = "tf-minio-credentials"
-
-  # Read from Vault (bootstrap stored these) and ensure Vault secret exists
-  values = {
-    access_key = data.vault_kv_secret_v2.tf_minio.data["access_key"]
-    secret_key = data.vault_kv_secret_v2.tf_minio.data["secret_key"]
-  }
-}
+# The tf-minio-credentials ExternalSecret is managed by GitOps, not Terraform
+# It's defined in deployments/clusters/production/tf-controller/tf-minio-externalsecret.yaml
+# The secret will be created by the ExternalSecrets controller
 
 # Example usage for app secrets:
 # module "redis" {
